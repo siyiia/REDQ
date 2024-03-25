@@ -67,7 +67,25 @@ class ReplayBuffer:
                     rews=self.rews_buf[idxs],
                     done=self.done_buf[idxs],
                     idxs=idxs)
+      
+    def relabel_with_predictor(self, predictor):
+        batch_size = 200
+        total_iter = int(self.ptr / batch_size)
 
+        if self.ptr > batch_size * total_iter:
+            total_iter += 1
+
+        for index in range(total_iter):
+            last_index = (index + 1) * batch_size
+            if (index + 1) * batch_size > self.ptr:
+                last_index = self.ptr
+
+            obses = self.obs1_buf[index * batch_size:last_index]
+            actions = self.acts_buf[index * batch_size:last_index]
+            inputs = np.concatenate([obses, actions], axis=-1)
+
+            pred_reward = predictor.r_hat_batch(inputs)
+            self.rews_buf[index * batch_size:last_index] = pred_reward
 
 class Mlp(nn.Module):
     def __init__(
